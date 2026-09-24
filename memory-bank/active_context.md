@@ -11,40 +11,53 @@
 
 ## Current focus
 
-Building the agent workspace layer for the course — `CLAUDE.md`, hooks, skills,
-verification, and this memory bank. The app code itself is stable and untouched.
+Branch `chore/homework`. The workspace layer is committed and green; the open
+work is a decision, not code — **what to do about homework gap 1 (search), which
+is now implemented but not retired.**
 
-## Landed this session (2026-09-24)
+## In flight
 
-- `CLAUDE.md` — 3 never-ever rules, stack, scope, known inconsistencies.
-- `.claude/skills/new-homework-gap/` — skill for authoring and auditing gaps.
-- `.claude/hooks/protect-gaps.mjs` + `.claude/settings.json` — PreToolUse hook
-  that blocks edits removing a gap marker.
-- `scripts/verify.mjs` + `npm run verify` — 5-section check, fires the hook live.
-- `TROUBLESHOOT.md` — referenced by the course deck; previously missing.
-- `memory-bank/` — these five files.
+Uncommitted on `chore/homework`:
 
-Status: `npm run verify` all green, 14 tests passing.
+- `src/routes/books.ts` — search endpoint implemented against the existing
+  `Book.searchBooks()`. The gap marker was **deliberately retained**.
+- `src/views/books/search-results.ejs` — new HTMX fragment, empty-state handled.
+- `WORKSPACE.md` — how to drive the workspace layer.
+- **Self-improvement loop** — `.claude/rules.md` (lifecycle), 
+  `.claude/hooks/inject-rules.mjs` (UserPromptSubmit injection),
+  `scripts/self-improve.mjs` (extract/status/approve/reject/archive),
+  five `self:*` npm scripts, and a 7th `verify` section.
+
+Verified: build ✓, 14 tests ✓, `npm run verify` all green, endpoint serving
+(`?q=dune` → Dune, `?q=martin` → 3 matches across title and author, `?q=` → 50).
 
 ## Open decisions
 
-1. **Untrack `bookshelf.db-shm` / `bookshelf.db-wal`?** They are stale
-   better-sqlite3 artifacts; sql.js never writes WAL. Needs a `.gitignore` line
-   plus `git rm --cached`. Raised, not yet decided.
-2. **Fix the README Node-version contradiction?** Line 25 says 24 LTS, line 82
-   says 20+, `engines` says `>=20`. Documented as known; not fixed.
-3. **Build the self-improvement loop?** The course's session 4 calls for
-   `npm run self:extract-insights`, a git-tracked rules file, and a
-   `UserPromptSubmit` hook. Not started.
+1. **Retire homework gap 1, or revert the search implementation?** It was
+   implemented on explicit request. Right now the code works while README entry 1
+   still advertises it as an assignment — the docs and the code disagree. Resolve
+   via the `new-homework-gap` skill (retire) or `git checkout` (revert). *This is
+   the one blocking thing.*
+2. **Close the Bash bypass in `protect-gaps`?** The hook matches
+   `Edit|MultiEdit|Write|NotebookEdit`, so a shell edit (`sed -i`, heredoc, `>`)
+   skips it entirely. Matters more than usual here — the course teaches that
+   hooks can't be bypassed.
+3. **Untrack `bookshelf.db-shm` / `bookshelf.db-wal`?** Stale better-sqlite3
+   artifacts; sql.js never writes WAL. Needs a `.gitignore` line plus
+   `git rm --cached`.
+4. **Is the loop worth keeping given the signal volume?** Built and green, but
+   extraction reports 0 rules from 4 sessions (2 incidents, nothing recurring).
+   It only earns its keep as transcript history accumulates. Re-run
+   `npm run self:extract-insights` in a few weeks before judging it.
+5. **Still missing: a `Stop` hook** to automate the memory-bank ritual — the one
+   remaining step that depends on a human habit.
 
 ## Next up
 
-- Course sessions 5–8 have not been read; more workspace gaps may surface.
-- Session 3 also calls for slash commands in `.claude/commands/`
-  (`/commit`, `/review`, `/debug`) and a PostToolUse hook — neither exists yet.
+- Course sessions 5–8 unread; more workspace gaps likely.
+- Session 3 also calls for `.claude/commands/` (`/commit`, `/review`, `/debug`).
 
 ## Notes for the next session
 
-- The hook only takes effect after a Claude Code restart; `settings.json` is
-  read at session start.
-- `npm run verify` is the fastest way to confirm nothing regressed.
+- Hook changes need a Claude Code restart — `settings.json` is read at start.
+- `npm run verify` is the fastest regression check.

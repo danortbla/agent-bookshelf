@@ -24,7 +24,14 @@
     "prepublishOnly": "npm run build",
     "test": "vitest",
     "test:run": "vitest run",
-    "verify": "node scripts/verify.mjs"
+    "verify": "node scripts/verify.mjs",
+    "self:extract-insights": "node scripts/self-improve.mjs extract",
+    "self:status": "node scripts/self-improve.mjs status",
+    "self:approve": "node scripts/self-improve.mjs approve",
+    "self:reject": "node scripts/self-improve.mjs reject",
+    "self:archive": "node scripts/self-improve.mjs archive",
+    "self:score": "node scripts/self-improve.mjs score",
+    "self:incidents": "node scripts/self-improve.mjs incidents"
   },
   "keywords": [
     "goodreads",

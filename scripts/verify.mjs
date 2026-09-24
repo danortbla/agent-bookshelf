@@ -188,11 +188,88 @@ if (existsSync(hookPath)) {
   });
   if (allowed.status === 0) pass('hook allows ordinary edits', 'exit 0');
   else fail('hook wrongly blocked an ordinary edit', `exit ${allowed.status}`);
+  // Bash surface: shell writes to a guarded file must be blocked, reads must not.
+  const fireBash = (command) =>
+    spawnSync(process.execPath, [hookPath], {
+      input: JSON.stringify({ hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command } }),
+      encoding: 'utf8',
+    });
+
+  const guarded = codeGaps[0] || 'src/routes/books.ts';
+  const inPlace = ['sed', '-i', "''", "'s/x/y/'", guarded].join(' ');
+  const shellWrite = fireBash(inPlace);
+  if (shellWrite.status === 2) pass('hook blocks shell writes to a gap file', 'in-place edit');
+  else fail('hook did NOT block a shell write', `exit ${shellWrite.status}`);
+
+  const shellRead = fireBash(`grep -n TODO ${guarded} > /tmp/verify-out.txt`);
+  if (shellRead.status === 0) pass('hook allows shell reads of a gap file', 'redirect elsewhere');
+  else fail('hook wrongly blocked a shell read', `exit ${shellRead.status}`);
 } else {
   fail('.claude/hooks/protect-gaps.mjs missing');
 }
 
-/* ------------------------------------------------------------------ 6. tests */
+const stopHook = join(ROOT, '.claude/hooks/session-end.mjs');
+if (existsSync(stopHook)) {
+  const r = spawnSync(process.execPath, [stopHook], {
+    input: JSON.stringify({ hook_event_name: 'Stop' }),
+    encoding: 'utf8',
+    timeout: 40000,
+  });
+  if (r.status === 0) pass('session-end (Stop) hook runs', 'never blocks');
+  else fail('session-end hook failed', `exit ${r.status}`);
+} else {
+  fail('.claude/hooks/session-end.mjs missing');
+}
+
+const CMDS = ['commit.md', 'review.md', 'debug.md'];
+const missingCmds = CMDS.filter((f) => !existsSync(join(ROOT, '.claude/commands', f)));
+if (missingCmds.length === 0) pass('slash commands present', CMDS.map((c) => '/' + c.replace('.md', '')).join(' '));
+else warn('slash commands missing', missingCmds.join(', '));
+
+if (existsSync(join(ROOT, '.claude/skills/self-improve/SKILL.md'))) pass('self-improve skill present');
+else warn('self-improve skill missing');
+
+/* --------------------------------------------------- 6. self-improvement loop */
+section('Self-improvement');
+
+const rulesRaw = read('.claude/rules.md');
+if (!rulesRaw) {
+  fail('.claude/rules.md missing');
+} else {
+  const blocks = rulesRaw.split(/\n## /).slice(1).filter((b) => /^R\d+\s+·/.test(b));
+  const by = (st) => blocks.filter((b) => new RegExp(`^- \\*\\*state:\\*\\*\\s*${st}\\s*$`, 'm').test(b)).length;
+  pass('rules.md parses', `${blocks.length} rule(s): ${by('accepted')} accepted, ${by('proposed')} proposed, ${by('archived')} archived`);
+
+  const injector = join(ROOT, '.claude/hooks/inject-rules.mjs');
+  if (!existsSync(injector)) {
+    fail('inject-rules hook missing');
+  } else {
+    const fireInject = (prompt) =>
+      spawnSync(process.execPath, [injector], {
+        input: JSON.stringify({ prompt }),
+        encoding: 'utf8',
+        env: { ...process.env, RULES_DRY_RUN: '1' },
+      });
+
+    // Pull a real trigger word off the first accepted rule, if there is one.
+    const accepted = blocks.find((b) => /^- \*\*state:\*\*\s*accepted\s*$/m.test(b));
+    const trigger = accepted?.match(/^- \*\*triggers:\*\*\s*([^,\n]+)/m)?.[1]?.trim();
+
+    if (trigger) {
+      const hit = fireInject(`please help me with ${trigger}`);
+      if (hit.status === 0 && hit.stdout.includes('Learned rules')) pass('injector fires on a matching prompt', `trigger "${trigger}"`);
+      else fail('injector did not fire on a matching prompt', `trigger "${trigger}"`);
+    } else {
+      warn('No accepted rules yet', 'injector match path not exercised');
+    }
+
+    const miss = fireInject('qqzzxx nonsense prompt with no triggers');
+    if (miss.status === 0 && !miss.stdout.trim()) pass('injector silent on unrelated prompts');
+    else fail('injector emitted output for an unrelated prompt');
+  }
+}
+
+/* ------------------------------------------------------------------ 7. tests */
 section('Tests');
 
 const vitest = spawnSync('npx', ['vitest', 'run', '--reporter=dot'], {

@@ -108,6 +108,7 @@ docs/adr/            Architecture decisions
 memory-bank/         Persistent project memory (see below)
 .claude/skills/      Project skills
 .claude/hooks/       Deterministic guardrails
+.claude/rules.md     Learned rules (self-improvement loop)
 ```
 
 ## Memory
@@ -131,6 +132,10 @@ move the outcome to `progress.md` and delete it from `active_context.md`.
 Update these at session end, not mid-task, and commit them with the work so the
 team's context stays in sync.
 
+`.claude/rules.md` is separate: rules learned from session history, injected into
+matching prompts by a `UserPromptSubmit` hook. They are advisory — this file
+outranks them. See `WORKSPACE.md` section 7.
+
 ## Commands
 
 ```bash
@@ -138,7 +143,12 @@ npm run dev        # tsx watch, hot reload
 npm run build      # tsc + copy-assets (sql/views/public → dist)
 npm start          # run the built server
 npm run test:run   # single pass — use this, not `npm test` (that watches)
-npm run verify     # environment + gap-integrity check
+npm run verify     # environment + gap-integrity check (7 sections)
+
+npm run self:extract-insights   # scan transcripts -> propose rules
+npm run self:status             # rules by state
+npm run self:score              # per-session quality signals
+npm run self:approve <id>       # proposed -> accepted
 ```
 
 `npm run build` is **not** optional before `npm start` — `copy-assets` is what

@@ -3,11 +3,31 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|MultiEdit|Write|NotebookEdit",
+        "matcher": "Edit|MultiEdit|Write|NotebookEdit|Bash",
         "hooks": [
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/protect-gaps.mjs\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/inject-rules.mjs\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-end.mjs\""
           }
         ]
       }
@@ -21,7 +41,11 @@
       "Bash(npm run dev)",
       "Bash(git status)",
       "Bash(git diff:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(npm run self:status)",
+      "Bash(npm run self:extract-insights)",
+      "Bash(npm run self:score)",
+      "Bash(npm run self:incidents)"
     ],
     "deny": [
       "Bash(git push --force:*)",
