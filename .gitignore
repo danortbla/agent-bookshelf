@@ -149,3 +149,4 @@ vite.config.ts.timestamp-*
 *.db
 *.sqlite
 *.sqlite3
+.claude/.self-improve-state.json
