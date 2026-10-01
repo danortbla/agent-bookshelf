@@ -51,8 +51,8 @@ any rule whose body targets those paths.
 - **created:** 2026-09-24
 - **triggers:** test, vitest, spec, createuser, model test
 - **evidence:** 2 incident(s) · stale-doc · observed 2026-09-24
-- **hits:** 2
-- **last-hit:** 2026-09-24
+- **hits:** 3
+- **last-hit:** 2026-10-01
 
 `tests/README.md` shows `User.createUser(db, 'testuser', 'Test User')`, but models
 never take a database handle — the real signature is `createUser(username, displayName)`.
