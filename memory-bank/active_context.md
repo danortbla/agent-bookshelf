@@ -7,32 +7,46 @@
 > `progress.md` and delete it from here. A graveyard of old notes here is the
 > documented failure mode.
 
-**Last updated:** 2026-09-24
+**Last updated:** 2026-10-01
 
 ## Current focus
 
-Branch `chore/homework`. The workspace layer is committed and green; the open
-work is a decision, not code — **what to do about homework gap 1 (search), which
-is now implemented but not retired.**
+Course sessions 5 and 6 read. **Session 5's deliverable is done** (see
+`progress.md`); **session 6's is not started.** Gap 1 (search) is still
+implemented-but-not-retired — unchanged and still the oldest open decision.
 
 ## In flight
 
-Uncommitted on `chore/homework`:
+Uncommitted on `chore/homework`, from earlier sessions:
 
-- `src/routes/books.ts` — search endpoint implemented against the existing
-  `Book.searchBooks()`. The gap marker was **deliberately retained**.
-- `src/views/books/search-results.ejs` — new HTMX fragment, empty-state handled.
-- `WORKSPACE.md` — how to drive the workspace layer.
-- **Self-improvement loop** — `.claude/rules.md` (lifecycle), 
-  `.claude/hooks/inject-rules.mjs` (UserPromptSubmit injection),
-  `scripts/self-improve.mjs` (extract/status/approve/reject/archive),
-  five `self:*` npm scripts, and a 7th `verify` section.
+- `src/routes/books.ts` / `src/views/books/search-results.ejs` — search
+  implemented, gap marker **deliberately retained**.
+- `WORKSPACE.md`, `HOW-IT-WORKS.md` — workspace documentation.
+- `tests/models/review.test.ts` — 23 tests, untracked. This is why the suite
+  reports 37 rather than the 14 `CLAUDE.md` documents.
 
-Verified: build ✓, 14 tests ✓, `npm run verify` all green, endpoint serving
-(`?q=dune` → Dune, `?q=martin` → 3 matches across title and author, `?q=` → 50).
+Session 5's work is on its own branch, `feat/session-5-mcp-to-cli`.
+
+## Session 6 homework — not started
+
+Two tracks, pick by role (deliverable 2 of 2, due before Thursday):
+
+- **Designers:** branch → one visual change via Claude Code → verify in browser
+  → open a PR.
+- **QA:** pick a function, run the 5-step test-gen workflow, arrive with 3+
+  tests you have read and understand.
+
+The QA track fits this repo — `user.ts` and `shelf.ts` remain untested, and
+`tests/models/review.test.ts` is a half-finished start. Writing tests is not
+filling a homework gap, so it does not conflict with never-ever rule 1.
 
 ## Open decisions
 
+0. **Rotate the Jira API token.** It was pasted into a Claude Code transcript on
+   2026-10-01 while building `jira-cli`. It is in no file in this repo (verified
+   by grep), but the transcript retains it. Replace it at
+   `id.atlassian.com/manage-profile/security/api-tokens` and delete the old one.
+   *Do this first.*
 1. **Retire homework gap 1, or revert the search implementation?** It was
    implemented on explicit request. Right now the code works while README entry 1
    still advertises it as an assignment — the docs and the code disagree. Resolve

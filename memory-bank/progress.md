@@ -3,7 +3,7 @@
 > **Tier:** Episodic memory · **Update:** at session end, alongside the commit
 > Durable status. What works, what's deliberately missing, what's actually broken.
 
-**Last updated:** 2026-09-24
+**Last updated:** 2026-10-01
 
 ## Status
 
@@ -14,10 +14,10 @@ the application to the agent workspace around it.
 |---|---|
 | App (`src/`) | ✅ Stable, plus search implemented on `chore/homework` |
 | Database | ✅ sql.js, zero native deps, all OSes |
-| Tests | ✅ 14 passing · ⚠️ coverage deliberately partial |
+| Tests | ✅ 37 passing (14 tracked + 23 untracked in `review.test.ts`) · ⚠️ coverage deliberately partial |
 | Homework gaps | ⚠️ 4 documented — gap 1 implemented but **not retired** |
-| Agent workspace | ✅ CLAUDE.md, hook, skill, verify, memory bank, WORKSPACE.md |
-| Course alignment | ⚠️ Sessions 1–4 covered; 5–8 unread |
+| Agent workspace | ✅ CLAUDE.md, hook, skills, verify, memory bank, WORKSPACE.md |
+| Course alignment | ⚠️ Sessions 1–5 delivered; session 6 homework not started; 7–8 unread |
 
 ## Timeline
 
@@ -27,8 +27,34 @@ the application to the agent workspace around it.
 | 2026-09-15 | Windows compatibility pass |
 | 2026-09-16 | **Migrated better-sqlite3 → sql.js**; docs updated |
 | 2026-09-24 | Agent workspace layer, in three commits: `7ca6ee9` CLAUDE.md + TROUBLESHOOT.md · `83eff81` new-homework-gap skill · `3e56485` protect-gaps hook + memory bank |
+| 2026-10-01 | **Session 5 deliverable** — `jira-cli` skill (MCP-to-CLI conversion) + measurement writeup, on `feat/session-5-mcp-to-cli` |
 
-15 commits. Workspace work continues on branch `chore/homework`.
+Workspace work continues on branch `chore/homework`.
+
+## Session 5 outcome — MCP-to-CLI conversion
+
+Converted the Atlassian connector's `searchJiraIssuesUsingJql` into a `curl`+`jq`
+wrapper. Full method and numbers in `docs/mcp-to-cli-measurement.md`.
+
+What the measurement actually showed, including where it contradicted the
+lecture:
+
+- **No baseline existed.** 1 MCP call across 91 session transcripts, and it was
+  a login that never completed. 16 of 18 connectors unused. The "three most
+  frequently called tools per server" step had no answer.
+- **Per-call saving is real and recurring:** ~5.9 KB → 480 bytes, ~12×, same
+  five issues. The MCP tool has no parameter that suppresses its `self` URLs,
+  icon URLs, nested status objects or trailing feature-flag block; `jq` drops
+  them before they reach context.
+- **The connector costs 13,338 tokens, not the deck's 55,000** — ~4× lower.
+  45% of it is Confluence and Compass, which never come up in a code session,
+  and the connector cannot be mounted in halves.
+- **Deferred tool loading had already solved most of the mounting problem.**
+  `/context` showed MCP tools at 1k resident / 22k deferred; the whole exercise
+  materialized only 2,046 tokens of Atlassian. This weakens the mounting-cost
+  argument in Claude Code specifically, and leaves the per-call argument intact.
+- **`claude mcp list` reports reachability, not authorization.** It called four
+  unauthenticated servers `✔ Connected`. Use `/mcp` for an honest inventory.
 
 ## Works
 

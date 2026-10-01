@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+#
+# jira-cli — token-cheap CLI replacement for the Atlassian MCP's read-heavy calls.
+#
+# The Atlassian MCP connector mounts 27 tool schemas (13,338 tokens measured) and
+# its JQL search returns ~5.9 KB of JSON to deliver ~480 bytes of signal. This
+# wrapper makes the same reads and pipes them through jq, so only the signal ever
+# reaches the context window.
+#
+# Reads only. Writes — transitions, comments, issue creation — still go through
+# the MCP, where typed validation earns its cost.
+#
+# Requires curl, jq, and three environment variables. Never commit these:
+#
+#   export JIRA_SITE=your-org.atlassian.net
+#   export JIRA_EMAIL=you@example.com
+#   export JIRA_API_TOKEN=...   # id.atlassian.com/manage-profile/security/api-tokens
+#
+set -euo pipefail
+
+: "${JIRA_SITE:?set JIRA_SITE (e.g. your-org.atlassian.net, no https://)}"
+: "${JIRA_EMAIL:?set JIRA_EMAIL}"
+: "${JIRA_API_TOKEN:?set JIRA_API_TOKEN — see id.atlassian.com/manage-profile/security/api-tokens}"
+
+FIELDS='summary,status,issuetype,priority,updated'
+RAW=0
+
+api() {
+  curl -sS --fail-with-body \
+    -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+    -H 'Accept: application/json' \
+    "https://${JIRA_SITE}/rest/api/3$1"
+}
+
+urlenc() { printf %s "$1" | jq -sRr @uri; }
+
+# JQL search -> one tab-separated line per issue: KEY<TAB>STATUS<TAB>SUMMARY
+search() {
+  local jql=$1 limit=${2:-50} out
+  out=$(api "/search/jql?jql=$(urlenc "$jql")&maxResults=${limit}&fields=${FIELDS}")
+
+  if [ "$RAW" = 1 ]; then
+    printf '%s\n' "$out"
+    return
+  fi
+
+  printf '%s' "$out" | jq -r '
+    if (.issues | length) == 0 then
+      "no matching issues"
+    else
+      .issues[] | [.key, .fields.status.name, .fields.summary] | @tsv
+    end'
+}
+
+# Single issue, with the description flattened out of Atlassian Document Format.
+issue() {
+  local key=${1:?usage: jira-cli issue TPD-1234} out
+  out=$(api "/issue/${key}?fields=summary,status,assignee,reporter,priority,issuetype,updated,description")
+
+  if [ "$RAW" = 1 ]; then
+    printf '%s\n' "$out"
+    return
+  fi
+
+  printf '%s' "$out" | jq -r '
+    "key:       " + .key,
+    "summary:   " + (.fields.summary // "-"),
+    "type:      " + (.fields.issuetype.name // "-"),
+    "status:    " + (.fields.status.name // "-"),
+    "assignee:  " + (.fields.assignee.displayName // "unassigned"),
+    "reporter:  " + (.fields.reporter.displayName // "-"),
+    "priority:  " + (.fields.priority.name // "-"),
+    "updated:   " + (.fields.updated // "-"),
+    "",
+    ([.fields.description? // {} | .. | objects | select(.type == "text") | .text]
+       | join(" ") | .[0:2000])'
+}
+
+usage() {
+  cat <<'USAGE'
+jira-cli — read-only Jira queries that cost ~1/12th the tokens of the MCP path
+
+  jira-cli mine [limit]          issues assigned to you, unresolved
+  jira-cli review [limit]        issues you reported that are awaiting review
+  jira-cli issue KEY             one issue, description flattened to plain text
+  jira-cli jql "<query>" [limit]  arbitrary JQL
+  jira-cli projects              visible projects
+
+  --raw   emit the unfiltered API JSON (for debugging the wrapper itself)
+
+Output is tab-separated: KEY<TAB>STATUS<TAB>SUMMARY. Pipe through
+`column -t -s $'\t'` for human reading; leave it raw for machines.
+USAGE
+}
+
+main() {
+  local args=()
+  for a in "$@"; do
+    case $a in
+      --raw) RAW=1 ;;
+      *) args+=("$a") ;;
+    esac
+  done
+  set -- "${args[@]+"${args[@]}"}"
+
+  case "${1:-mine}" in
+    mine)
+      search 'assignee = currentUser() AND resolution = Unresolved ORDER BY updated DESC' "${2:-50}"
+      ;;
+    review)
+      search 'reporter = currentUser() AND status = "Listo para revisión" ORDER BY updated DESC' "${2:-50}"
+      ;;
+    issue)
+      issue "${2:-}"
+      ;;
+    jql)
+      search "${2:?usage: jira-cli jql \"project = TPD AND status = Open\"}" "${3:-50}"
+      ;;
+    projects)
+      if [ "$RAW" = 1 ]; then
+        api '/project/search?maxResults=100'
+      else
+        api '/project/search?maxResults=100' \
+          | jq -r '.values[] | [.key, .name] | @tsv'
+      fi
+      ;;
+    -h|--help|help)
+      usage
+      ;;
+    *)
+      printf 'unknown command: %s\n\n' "$1" >&2
+      usage >&2
+      exit 64
+      ;;
+  esac
+}
+
+main "$@"
